@@ -9,11 +9,11 @@ import (
 )
 
 type Message struct {
-	tag  string
-	data []byte
+	Tag  string
+	Data []byte
 }
 
-type Client struct {
+type clientobs struct {
 	readCh  chan Message
 	writeCh chan []byte
 	ws      *websocket.Conn
@@ -22,9 +22,9 @@ type Client struct {
 }
 
 type Server struct {
-	clients   map[string][]*Client
+	clients   map[string][]*clientobs
 	clientRCh chan Message
-	writeCh   chan Message
+	WriteCh   chan Message
 	listeners map[string][]Listener
 	mutex     *sync.Mutex
 
@@ -44,24 +44,24 @@ func (s *Server) SetChannel(tag string, l Listener, path string) {
 	}
 }
 
-func (s *Server) addNewClient(tag string, ws *websocket.Conn) *Client {
+func (s *Server) addNewclientobs(tag string, ws *websocket.Conn) *clientobs {
 
 	s.mutex.Lock()
 	if _, ok := s.clients[tag]; !ok {
-		s.clients[tag] = make([]*Client, 0)
+		s.clients[tag] = make([]*clientobs, 0)
 	}
 	s.mutex.Unlock()
 
 	cid := len(s.clients[tag])
 	wc := make(chan []byte)
-	c := Client{readCh: s.clientRCh, writeCh: wc, ws: ws, tag: tag, id: cid}
+	c := clientobs{readCh: s.clientRCh, writeCh: wc, ws: ws, tag: tag, id: cid}
 	s.mutex.Lock()
 	s.clients[tag] = append(s.clients[tag], &c)
 	s.mutex.Unlock()
 	return &c
 }
 
-func (s *Server) removeClient(tag string, id int) {
+func (s *Server) removeclientobs(tag string, id int) {
 	s.mutex.Lock()
 	if _, ok := s.clients[tag]; !ok {
 		return
@@ -91,9 +91,9 @@ func (s *Server) listen() {
 			case cmsg := <-s.clientRCh:
 				fmt.Println("got message from client", cmsg)
 				// check listener
-				if _, ok := s.listeners[cmsg.tag]; ok {
-					for _, listener := range s.listeners[cmsg.tag] {
-						listener(cmsg.tag, cmsg.data)
+				if _, ok := s.listeners[cmsg.Tag]; ok {
+					for _, listener := range s.listeners[cmsg.Tag] {
+						listener(cmsg.Tag, cmsg.Data)
 					}
 				}
 			}
@@ -104,11 +104,11 @@ func (s *Server) listen() {
 	func() {
 		for {
 			select {
-			case amsg := <-s.writeCh:
+			case amsg := <-s.WriteCh:
 				fmt.Println("got message from app", amsg)
-				if _, ok := s.clients[amsg.tag]; ok {
-					for _, cch := range s.clients[amsg.tag] {
-						cch.writeCh <- amsg.data
+				if _, ok := s.clients[amsg.Tag]; ok {
+					for _, cch := range s.clients[amsg.Tag] {
+						cch.writeCh <- amsg.Data
 					}
 				}
 			}
@@ -119,16 +119,16 @@ func (s *Server) listen() {
 func registerWS(tag string, ws *websocket.Conn, s *Server) {
 	fmt.Println("register", tag)
 
-	c := s.addNewClient(tag, ws)
+	c := s.addNewclientobs(tag, ws)
 	defer func() {
-		s.removeClient(tag, c.id)
+		s.removeclientobs(tag, c.id)
 	}()
 
 	go c.listenWrite()
 	c.listenRead()
 }
 
-func (c *Client) listenRead() {
+func (c *clientobs) listenRead() {
 	for {
 		select {
 		default:
@@ -140,13 +140,13 @@ func (c *Client) listenRead() {
 			} else if err != nil {
 
 			} else {
-				c.readCh <- Message{tag: c.tag, data: data}
+				c.readCh <- Message{Tag: c.tag, Data: data}
 			}
 		}
 	}
 }
 
-func (c *Client) listenWrite() {
+func (c *clientobs) listenWrite() {
 	for {
 		select {
 		case amsg := <-c.writeCh:
@@ -182,12 +182,12 @@ func (s *Server) setHandler(tag string, scriptpath string) {
 }
 
 func newServer() *Server {
-	cs := make(map[string][]*Client)
+	cs := make(map[string][]*clientobs)
 	crc := make(chan Message)
 	wc := make(chan Message)
 	l := make(map[string][]Listener)
 	mx := &sync.Mutex{}
-	return &Server{clients: cs, clientRCh: crc, writeCh: wc, listeners: l, mutex: mx}
+	return &Server{clients: cs, clientRCh: crc, WriteCh: wc, listeners: l, mutex: mx}
 }
 
 func StartServer(port string) *Server {
