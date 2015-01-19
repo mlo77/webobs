@@ -194,7 +194,15 @@ func (s *Server) setHandler(tag string, scriptpath string) {
 	} else {
 		http.HandleFunc("/"+tag, func(w http.ResponseWriter, r *http.Request) {
 			t, _ := template.ParseFiles(tmpl)
-			p := struct{ Title string }{tag}
+			p := struct{ 
+				Title string 
+				Tagws string
+				ScriptPath string
+			}{
+				tag, 
+				tagws,
+				clientscriptpath + tag+".js",
+			}
 			t.Execute(w, p)
 		})
 	}
