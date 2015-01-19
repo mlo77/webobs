@@ -3,8 +3,10 @@ package webobs
 import (
 	"code.google.com/p/go.net/websocket"
 	"fmt"
+	"html/template"
 	"io"
 	"net/http"
+	"os"
 	"sync"
 )
 
@@ -27,7 +29,6 @@ type Server struct {
 	WriteCh   chan Message
 	listeners map[string][]Listener
 	mutex     *sync.Mutex
-
 }
 
 type Listener func(tag string, data []byte)
@@ -173,12 +174,21 @@ func (s *Server) setHandler(tag string, scriptpath string) {
 			registerWS(tag, ws, s)
 		}))
 
-	http.HandleFunc("/"+tag, func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "<h1>%s</h1>"+
-			"<script>var soc = new WebSocket(\"ws://\"+window.location.host+\"/%s\");</script>"+
-			"<script type=\"text/javascript\" src=\"%s%s\"></script><body></body>",
-			tag, tagws, clientscriptpath, tag+".js")
-	})
+	tmpl := scriptpath + "/" + tag + ".html"
+	if _, err := os.Stat(tmpl); os.IsNotExist(err) {
+		http.HandleFunc("/"+tag, func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintf(w, "<h1>%s</h1>"+
+				"<script>var soc = new WebSocket(\"ws://\"+window.location.host+\"/%s\");</script>"+
+				"<script type=\"text/javascript\" src=\"%s%s\"></script><body></body>",
+				tag, tagws, clientscriptpath, tag+".js")
+		})
+	} else {
+		http.HandleFunc("/"+tag, func(w http.ResponseWriter, r *http.Request) {
+			t, _ := template.ParseFiles(tmpl)
+			p := struct{ Title string }{tag}
+			t.Execute(w, p)
+		})
+	}
 }
 
 func newServer() *Server {
