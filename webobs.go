@@ -1,3 +1,5 @@
+// Package webobs provides creation of websocket handlers at runtime,
+// allowing easy communication between go program and web browsers
 package webobs
 
 import (
@@ -11,7 +13,9 @@ import (
 )
 
 type Message struct {
-	Tag  string
+	// Tag categories the message
+	Tag string
+	// Data contains data, may be marshalled to JSON
 	Data []byte
 }
 
@@ -26,13 +30,18 @@ type clientobs struct {
 type Server struct {
 	clients   map[string][]*clientobs
 	clientRCh chan Message
+	// WriteCh is used whenever the application wish to send messages
+	// the web observers
 	WriteCh   chan Message
 	listeners map[string][]Listener
 	mutex     *sync.Mutex
 }
 
+// Listener is the callback type when receiving messages from web observers
 type Listener func(tag string, data []byte)
 
+// SetChannel adds a websocket handle and http handle to serve rendered
+// html pages and scripts
 func (s *Server) SetChannel(tag string, l Listener, path string) {
 	s.setHandler(tag, path)
 	if l != nil {
@@ -200,6 +209,8 @@ func newServer() *Server {
 	return &Server{clients: cs, clientRCh: crc, WriteCh: wc, listeners: l, mutex: mx}
 }
 
+// StartServer creates and starts a http server with no handles,
+// it awaits for channels to be set.
 func StartServer(port string) *Server {
 	s := newServer()
 
