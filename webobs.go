@@ -198,10 +198,12 @@ func (s *Server) setHandler(tag string, scriptpath string) {
 				Title string 
 				Tagws string
 				ScriptPath string
+				ScriptName string
 			}{
 				tag, 
 				tagws,
-				clientscriptpath + tag+".js",
+				clientscriptpath,
+				tag+".js",
 			}
 			t.Execute(w, p)
 		})
