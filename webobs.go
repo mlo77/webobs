@@ -99,7 +99,7 @@ func (s *Server) listen() {
 		for {
 			select {
 			case cmsg := <-s.clientRCh:
-				fmt.Println("got message from client", cmsg)
+				//fmt.Println("got message from client", cmsg)
 				// check listener
 				if _, ok := s.listeners[cmsg.Tag]; ok {
 					for _, listener := range s.listeners[cmsg.Tag] {
@@ -115,7 +115,7 @@ func (s *Server) listen() {
 		for {
 			select {
 			case amsg := <-s.WriteCh:
-				fmt.Println("got message from app", amsg)
+				//fmt.Println("got message from app", amsg)
 				if _, ok := s.clients[amsg.Tag]; ok {
 					for _, cch := range s.clients[amsg.Tag] {
 						cch.writeCh <- amsg.Data
