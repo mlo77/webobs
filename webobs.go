@@ -126,6 +126,12 @@ func (s *Server) listen() {
 	}()
 }
 
+// HasRegisteredClient returns whether there is a client for given tag
+func (s *Server) HasRegisteredClient(tag string) bool {
+	_, ok := s.clients[tag]
+	return ok
+}
+
 func registerWS(tag string, ws *websocket.Conn, s *Server) {
 	fmt.Println("register", tag)
 
