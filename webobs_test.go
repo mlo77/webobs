@@ -10,9 +10,9 @@ import (
 
 func doTestClients() error {
 	s := newServer()
-	c := s.addNewClient("test", nil)
+	c := s.addNewclientobs("test", nil)
 	fmt.Println("clients", s.clients)
-	s.removeClient("test", c.id)
+	s.removeclientobs("test", c.id)
 	fmt.Println("clients", s.clients)
 	return nil
 }

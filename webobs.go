@@ -3,7 +3,7 @@
 package webobs
 
 import (
-	"code.google.com/p/go.net/websocket"
+	"golang.org/x/net/websocket"
 	"fmt"
 	"html/template"
 	"io"
@@ -31,7 +31,7 @@ type Server struct {
 	clients   map[string][]*clientobs
 	clientRCh chan Message
 	// WriteCh is used whenever the application wish to send messages
-	// the web observers
+	// the web observers (websocket connected browsers)
 	WriteCh   chan Message
 	listeners map[string][]Listener
 	mutex     *sync.Mutex
