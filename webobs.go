@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"math/rand"
 )
 
 type Message struct {
@@ -62,7 +63,7 @@ func (s *Server) addNewclientobs(tag string, ws *websocket.Conn) *clientobs {
 	}
 	s.mutex.Unlock()
 
-	cid := len(s.clients[tag])
+	cid := rand.Int()
 	wc := make(chan []byte)
 	c := clientobs{readCh: s.clientRCh, writeCh: wc, ws: ws, tag: tag, id: cid}
 	s.mutex.Lock()
@@ -133,18 +134,20 @@ func (s *Server) HasRegisteredClient(tag string) bool {
 }
 
 func registerWS(tag string, ws *websocket.Conn, s *Server) {
-	fmt.Println("register", tag)
-
 	c := s.addNewclientobs(tag, ws)
+	fmt.Println("register", tag, c.id)
 	defer func() {
 		s.removeclientobs(tag, c.id)
+		c.ws.Close()
+		fmt.Println("deregistered", tag, c.id)
 	}()
 
-	go c.listenWrite()
-	c.listenRead()
+	stop := make(chan int)
+	go c.listenWrite(stop)
+	c.listenRead(stop)
 }
 
-func (c *clientobs) listenRead() {
+func (c *clientobs) listenRead(stop chan int) {
 	for {
 		select {
 		default:
@@ -152,6 +155,7 @@ func (c *clientobs) listenRead() {
 			err := websocket.Message.Receive(c.ws, &data)
 			if err == io.EOF {
 				// close client
+				stop<-1
 				return
 			} else if err != nil {
 
@@ -162,7 +166,7 @@ func (c *clientobs) listenRead() {
 	}
 }
 
-func (c *clientobs) listenWrite() {
+func (c *clientobs) listenWrite(stop chan int) {
 	for {
 		select {
 		case amsg := <-c.writeCh:
@@ -170,6 +174,8 @@ func (c *clientobs) listenWrite() {
 			if err != nil {
 				fmt.Println("send to client pb", amsg, err)
 			}
+		case <-stop :
+			return
 		}
 	}
 }
@@ -223,6 +229,14 @@ func newServer() *Server {
 	l := make(map[string][]Listener)
 	mx := &sync.Mutex{}
 	return &Server{clients: cs, clientRCh: crc, WriteCh: wc, listeners: l, mutex: mx}
+}
+
+
+// Shut all clients connected to a specific tag
+func (s *Server) ShutClientsForTag(tag string) {
+	for _, c := range s.clients[tag] {
+		c.ws.Close()
+	}
 }
 
 // StartServer creates and starts a http server with no handles,
